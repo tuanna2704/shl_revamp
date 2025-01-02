@@ -14,44 +14,44 @@ datasource db {
 }
 
 model Shlink {
-  id                     String        @id @db.VarChar(43)
-  passcodeFailuresRemaining Int         @default(5) @map("passcode_failures_remaining")
-  configPasscode         String?       @map("config_passcode")
-  configExp              DateTime?     @map("config_exp")
-  active                 Boolean       @default(true)
-  managementToken        String        @db.VarChar(43) @map("management_token")
+  id                        String    @id @db.VarChar(43)
+  passcodeFailuresRemaining Int       @default(5) @map("passcode_failures_remaining")
+  configPasscode            String?   @map("config_passcode")
+  configExp                 DateTime? @map("config_exp")
+  active                    Boolean   @default(true)
+  managementToken           String    @map("management_token") @db.VarChar(43)
 
   // Add relation to ShlinkFile
-  shlinkFiles            ShlinkFile[]  @relation("ShlinkToShlinkFile")
+  shlinkFiles ShlinkFile[] @relation("ShlinkToShlinkFile")
 
   // Add relation to ShlinkEndpoint
-  shlinkEndpoints        ShlinkEndpoint[] @relation("ShlinkToShlinkEndpoint")
+  shlinkEndpoints ShlinkEndpoint[] @relation("ShlinkToShlinkEndpoint")
 
   // Add relation to ShlinkAccess
-  shlinkAccesses         ShlinkAccess[] @relation("ShlinkToShlinkAccess")
+  shlinkAccesses ShlinkAccess[] @relation("ShlinkToShlinkAccess")
 
   @@map("shlink")
 }
 
 model ShlinkFile {
-  id           String   @id @db.VarChar(43)
-  contentType  String   @default("application/json") @map("content_type")
-  contentHash  String   @db.VarChar(32) @map("content_hash")
+  id          String @id @db.VarChar(43)
+  contentType String @default("application/json") @map("content_type")
+  contentHash String @map("content_hash") @db.VarChar(32)
 
   // Add relation to Shlink
-  shlink       Shlink   @relation("ShlinkToShlinkFile", fields: [shlinkId], references: [id])
-  shlinkId     String   @db.VarChar(43) // Foreign key to Shlink
+  shlink   Shlink @relation("ShlinkToShlinkFile", fields: [shlinkId], references: [id])
+  shlinkId String @db.VarChar(43) // Foreign key to Shlink
 
   // Add relation to CasItem
-  content      CasItem? @relation(fields: [contentHash], references: [hash])
+  content CasItem? @relation(fields: [contentHash], references: [hash])
 
   @@map("shlink_file")
 }
 
 model CasItem {
-  hash     String   @id @db.VarChar(32)
-  content  Bytes    @unique
-  refCount Int      @default(0) @map("ref_count")
+  hash     String @id @db.VarChar(32)
+  content  Bytes  @unique
+  refCount Int    @default(0) @map("ref_count")
 
   // Add relation to ShlinkFile
   shlinkFiles ShlinkFile[]
@@ -60,19 +60,19 @@ model CasItem {
 }
 
 model ShlinkEndpoint {
-  id               String   @id @db.VarChar(43)
-  endpointUrl      String   @map("endpoint_url")
-  configKey        String   @map("config_key")
-  configClientId   String   @map("config_client_id")
-  configClientSecret String? @map("config_client_secret")
-  configTokenEndpoint String @map("config_token_endpoint")
-  configRefreshToken String @map("config_refresh_token")
-  refreshTime      DateTime @default(now()) @map("refresh_time")
-  accessTokenResponse String @map("access_token_response")
+  id                  String   @id @db.VarChar(43)
+  endpointUrl         String   @map("endpoint_url")
+  configKey           String   @map("config_key")
+  configClientId      String   @map("config_client_id")
+  configClientSecret  String?  @map("config_client_secret")
+  configTokenEndpoint String   @map("config_token_endpoint")
+  configRefreshToken  String   @map("config_refresh_token")
+  refreshTime         DateTime @default(now()) @map("refresh_time")
+  accessTokenResponse String   @map("access_token_response")
 
   // Foreign key relation to Shlink
-  shlink           Shlink   @relation("ShlinkToShlinkEndpoint", fields: [shlinkId], references: [id])
-  shlinkId         String   @db.VarChar(43)
+  shlink   Shlink @relation("ShlinkToShlinkEndpoint", fields: [shlinkId], references: [id])
+  shlinkId String @db.VarChar(43)
 
   @@map("shlink_endpoint")
 }
@@ -83,7 +83,7 @@ model ShlinkAccess {
   accessTime DateTime @default(now()) @map("access_time")
 
   // Relation to Shlink
-  shlinkRel  Shlink   @relation("ShlinkToShlinkAccess", fields: [shlink], references: [id])
+  shlinkRel Shlink @relation("ShlinkToShlinkAccess", fields: [shlink], references: [id])
 
   @@id([shlink, recipient])
   @@map("shlink_access")
