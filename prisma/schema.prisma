@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Shlink {
+  id                        String    @id @db.VarChar(43)
+  passcodeFailuresRemaining Int       @default(5) @map("passcode_failures_remaining")
+  configPasscode            String?   @map("config_passcode")
+  configExp                 DateTime? @map("config_exp")
+  active                    Boolean   @default(true)
+  managementToken           String    @map("management_token") @db.VarChar(43)
+
+  // Add relation to ShlinkFile
+  shlinkFiles ShlinkFile[] @relation("ShlinkToShlinkFile")
+
+  // Add relation to ShlinkEndpoint
+  shlinkEndpoints ShlinkEndpoint[] @relation("ShlinkToShlinkEndpoint")
+
+  // Add relation to ShlinkAccess
+  shlinkAccesses ShlinkAccess[] @relation("ShlinkToShlinkAccess")
+
+  @@map("shlink")
+}
+
+model ShlinkFile {
+  id          Int    @id @default(autoincrement())
+  contentType String @default("application/json") @map("content_type")
+  contentHash String @map("content_hash")
+
+  // Add relation to Shlink
+  shlink   Shlink @relation("ShlinkToShlinkFile", fields: [shlinkId], references: [id])
+  shlinkId String @db.VarChar(43) // Foreign key to Shlink
+
+  // Add relation to CasItem
+  content CasItem? @relation(fields: [contentHash], references: [hash])
+
+  @@map("shlink_file")
+}
+
+model CasItem {
+  hash     String @unique
+  content  String
+  refCount Int    @default(0) @map("ref_count")
+
+  // Add relation to ShlinkFile
+  shlinkFiles ShlinkFile[]
+
+  @@map("cas_item")
+}
+
+model ShlinkEndpoint {
+  id                  String   @id @db.VarChar(43)
+  endpointUrl         String   @map("endpoint_url")
+  configKey           String   @map("config_key")
+  configClientId      String   @map("config_client_id")
+  configClientSecret  String?  @map("config_client_secret")
+  configTokenEndpoint String   @map("config_token_endpoint")
+  configRefreshToken  String   @map("config_refresh_token")
+  refreshTime         DateTime @default(now()) @map("refresh_time")
+  accessTokenResponse String   @map("access_token_response")
+
+  // Foreign key relation to Shlink
+  shlink   Shlink @relation("ShlinkToShlinkEndpoint", fields: [shlinkId], references: [id])
+  shlinkId String @db.VarChar(43)
+
+  @@map("shlink_endpoint")
+}
+
+model ShlinkAccess {
+  shlink     String   @db.VarChar(43)
+  recipient  String   @map("recipient")
+  accessTime DateTime @default(now()) @map("access_time")
+
+  // Relation to Shlink
+  shlinkRel Shlink @relation("ShlinkToShlinkAccess", fields: [shlink], references: [id])
+
+  @@id([shlink, recipient])
+  @@map("shlink_access")
+}
