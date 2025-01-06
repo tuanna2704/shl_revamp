@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Sse, Param, Headers, Req, HttpStatus, HttpException, RawBodyRequest } from '@nestjs/common';
+import { Controller, Post, Body, Sse, Param, Headers, Req, HttpStatus, HttpException, Delete } from '@nestjs/common';
+import { interval, map } from 'rxjs';
 import { ShlService } from './shl.service';
 import { Prisma } from '@prisma/client';
 import { randomStringWithEntropy } from './utils';
@@ -107,29 +108,79 @@ export class ShlController {
  
     return {...shl, added };
   }
+
+  @Delete('shl/:shlId')
+  async deleteShlink(
+    @Param('shlId') shlId: string,
+    @Headers('authorization') authorization: string,
+  ) {
+    try {
+      // Extract the management token from the Authorization header
+      const managementToken = authorization?.split(/bearer /i)[1];
+      if (!managementToken) {
+        throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Check if the SHL exists
+      const exists = await this.shlService.linkExists(shlId);
+      if (!exists) {
+        return {
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'SHL does not exist or has been deactivated.',
+        };
+      }
+
+      // Get the managed SHL
+      const shl = await this.shlService.getManagedShl(shlId, managementToken);
+      if (!shl) {
+        return {
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: 'Unauthorized'
+        };
+      }
+
+      // Deactivate the SHL
+      const deactivated = await this.shlService.deactivateShl(shlId);
+      return {
+        statusCode: HttpStatus.OK,
+        success: deactivated,
+      };
+    } catch (error) {
+      return {
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'SHL does not exist',
+      };
+    }
+  }
  
-  // @Sse('subscribe')
-  // async subscribe(@Body() shlSet: { shlId: string; managementToken: string }[]) {
-  //   // // Map the SHL set to managed links
-  //   // const managedLinks = shlSet.map((req) =>
-  //   //   db.DbLinks.getManagedShl(req.shlId, req.managementToken),
-  //   // );
+  @Post('subscribe')
+  async subscribe(@Body() shlSet: { shlId: string; managementToken: string }[]) {
+
+    // // Map the SHL set to managed links
+    // const managedLinks = shlSet.map((req) =>
+    //   db.DbLinks.getManagedShl(req.shlId, req.managementToken),
+    // );
  
-  //   // Generate a random ticket
-  //   const ticket = randomStringWithEntropy(32, 'subscription-ticket-');
+    // Generate a random ticket
+    const ticket = randomStringWithEntropy(32, 'subscription-ticket-');
  
-  //   // // Store ticket in the map
-  //   // subscriptionTickets.set(
-  //   //   ticket,
-  //   //   managedLinks.map((l) => l.id),
-  //   // );
+    // // Store ticket in the map
+    // subscriptionTickets.set(
+    //   ticket,
+    //   managedLinks.map((l) => l.id),
+    // );
  
-  //   // // Set a timeout to delete the ticket
-  //   // setTimeout(() => {
-  //   //   subscriptionTickets.delete(ticket);
-  //   // }, 10000);
+    // // Set a timeout to delete the ticket
+    // setTimeout(() => {
+    //   subscriptionTickets.delete(ticket);
+    // }, 10000);
  
-  //   // // Return the subscription URL
-  //   return { subscribe: `${process.env.PUBLIC_URL}/api/subscribe/${ticket}` };
-  // }
+    // // Return the subscription URL
+    return { subscribe: `${process.env.PUBLIC_URL}/api/subscribe/${ticket}` };
+  }
+
+  @Sse('subscribe/:ticket')
+  sse() {
+    return interval(15000).pipe(map((_) => ({ data: { shlCount: 0 } })));
+  }
 }

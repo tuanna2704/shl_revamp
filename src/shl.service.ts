@@ -120,7 +120,7 @@ export class ShlService {
  
   async recordAccess(shlId: string, recipient: string): Promise<void> {
     // Insert a new record into the `shlink_access` table
-    
+
     await this.prisma.shlinkAccess.create({
       data: {
         shlinkRel: { connect: { id: shlId } }, // Connects to the related `Shlink` record
@@ -165,5 +165,18 @@ export class ShlService {
       contentType: 'application/smart-api-access',
       id: endpoint.id,
     }));
+  }
+
+  async deactivateShl(shlinkId: string): Promise<boolean> {
+    try {
+      await this.prisma.shlink.update({
+        where: { id: shlinkId },
+        data: { active: false },
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deactivating SHL:', error);
+      return false;
+    }
   }
 }
