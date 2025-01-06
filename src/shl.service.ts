@@ -85,4 +85,85 @@ export class ShlService {
 
     return hashEncoded;
   }
+
+  async getShlInternal(linkId: string): Promise<HealthLink> {
+    // Query the database using Prisma
+    const linkRow = await this.prisma.shlink.findUnique({
+      where: { id: linkId },
+    });
+ 
+    if (!linkRow) return null;
+ 
+    // Map the database result to the expected HealthLink format
+    return {
+      id: linkRow.id,
+      passcodeFailuresRemaining: linkRow.passcodeFailuresRemaining,
+      active: !!linkRow.active,
+      managementToken: linkRow.managementToken,
+      config: {
+        exp: linkRow.configExp?.getTime(),
+        passcode: linkRow.configPasscode,
+      },
+    };
+  }
+ 
+  async recordPasscodeFailure(shlId: string): Promise<void> {
+    await this.prisma.shlink.update({
+      where: { id: shlId },
+      data: {
+        passcodeFailuresRemaining: {
+          decrement: 1,
+        },
+      },
+    });
+  }
+ 
+  async recordAccess(shlId: string, recipient: string): Promise<void> {
+    // Insert a new record into the `shlink_access` table
+    
+    await this.prisma.shlinkAccess.create({
+      data: {
+        shlinkRel: { connect: { id: shlId } }, // Connects to the related `Shlink` record
+        recipient,
+      },
+    });
+  }
+ 
+  async getManifestFiles(linkId: string, embeddedLengthMax?: number): Promise<{ contentType: string; hash: string; content?: string }[]> {
+    const files = await this.prisma.shlinkFile.findMany({
+      where: {
+        shlinkId: linkId,
+      },
+      include: {
+        content: true, // Include the related CasItem data
+      },
+    });
+ 
+    // Map the query results to the desired output format
+    const result = files.map(({ contentType, contentHash, content: { content } }) => ({
+      contentType: contentType, // Assuming `contentType` is the field in `shlink_file`
+      hash: contentHash,       // Assuming `contentHash` is the field in `shlink_file`
+      content:
+        content && content.length <= (embeddedLengthMax || Infinity) ? content : undefined,
+    }));
+    return result
+  }
+ 
+  // Fetch manifest endpoints
+  async getManifestEndpoints(linkId: string): Promise<{ contentType: string; id: string }[]> {
+    const endpoints = await this.prisma.shlinkEndpoint.findMany({
+      where: {
+        shlinkId: linkId,
+      },
+      select: {
+        id: true,
+      },
+    });    
+ 
+    // Map the query results to the desired output format
+    return endpoints.map((endpoint) => ({
+      contentType: 'application/smart-api-access',
+      id: endpoint.id,
+    }));
+  }
 }

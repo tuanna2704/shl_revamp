@@ -78,6 +78,7 @@ model ShlinkEndpoint {
 }
 
 model ShlinkAccess {
+  id          Int    @id @default(autoincrement())
   shlink     String   @db.VarChar(43)
   recipient  String   @map("recipient")
   accessTime DateTime @default(now()) @map("access_time")
@@ -85,6 +86,5 @@ model ShlinkAccess {
   // Relation to Shlink
   shlinkRel Shlink @relation("ShlinkToShlinkAccess", fields: [shlink], references: [id])
 
-  @@id([shlink, recipient])
   @@map("shlink_access")
 }
